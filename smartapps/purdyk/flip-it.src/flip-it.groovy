@@ -28,12 +28,18 @@ preferences {
 	section("Monitor the temperature...") {
 		input "temperatureSensor1", "capability.temperatureMeasurement"
 	}
-	section("When the temperature drops below...") {
+    section("When the temperature is...") {
+    	input "direction", "enum",  options: ["Above","Below"]
+    }
+	section("this thireshold...") {
 		input "temperature1", "number", title: "Temperature?"
 	}
-	section("Turn off a fan...") {
+	section("Toggle switch...") {
 		input "switch1", "capability.switch", required: false
 	}
+    section("to...") {
+    	input "onoff", "enum", options: ["On", "Off"]
+    }
 }
 
 def installed() {
@@ -48,11 +54,13 @@ def updated() {
 def temperatureHandler(evt) {
 	log.trace "temperature: $evt.value, $evt"
 
-	def tooCold = temperature1
+	def tempValue = temperature1
 	def mySwitch = settings.switch1
-
+    def above = settings.direction == "Above"
+	def on = settings.onoff == "On"
+    
 	// TODO: Replace event checks with internal state (the most reliable way to know if an SMS has been sent recently or not).
-	if (evt.doubleValue <= tooCold) {
+	if ((!above && evt.doubleValue <= tempValue) || (above && event.doubleValue >= tempValue)) {
 		log.debug "Checking how long the temperature sensor has been reporting <= $tooCold"
 
 		// Don't send a continuous stream of text messages
@@ -64,7 +72,11 @@ def temperatureHandler(evt) {
 
 		if (!debounce) {
 			log.debug "Temperature dropped below $tooCold: turning off $mySwitch"
-			switch1?.off()
+            if (on) {
+				switch1?.on()
+            } else {
+            	switch1?.off()
+            }
 		}
 	}
 }
